@@ -1,0 +1,50 @@
+{
+  "name": "siriphonesay-construction-website",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "build:preview": "tsc -b && vite build -c vite.preview.config.ts && python3 scripts/inline-images.py && python3 scripts/pack-models.py",
+    "typecheck": "tsc -b",
+    "test": "esbuild tests/house.test.ts --bundle --platform=node --outfile=node_modules/.cache/house-test.cjs --log-level=error --define:import.meta.env={} && node node_modules/.cache/house-test.cjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/archivo": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fontsource/noto-sans-lao": "^5.3.0",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "@supabase/supabase-js": "^2.119.0",
+    "framer-motion": "^14.14.0",
+    "jspdf": "^4.2.1",
+    "lz-string": "^1.5.0",
+    "meshoptimizer": "^1.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.5",
+    "three": "^0.187.0",
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1"
+  },
+  "devDependencies": {
+    "@gltf-transform/cli": "^4.5.1",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.187.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "autoprefixer": "^10.6.2",
+    "esbuild": "^0.28.2",
+    "oxlint": "^1.90.0",
+    "postcss": "^8.5.33",
+    "tailwindcss": "^3.4.19",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.6",
+    "vite-plugin-singlefile": "^2.3.4"
+  }
+}

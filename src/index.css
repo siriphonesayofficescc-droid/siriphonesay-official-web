@@ -1,0 +1,84 @@
+@import '@fontsource-variable/archivo/standard.css';
+@import '@fontsource-variable/inter';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/noto-sans-lao/400.css';
+@import '@fontsource/noto-sans-lao/600.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    overflow-x: clip;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply overflow-x-hidden bg-ink font-sans text-mist;
+  }
+  ::selection {
+    @apply bg-gold text-ink;
+  }
+  :focus-visible {
+    @apply outline outline-2 outline-offset-2 outline-gold;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+}
+
+@layer components {
+  .container-site {
+    @apply mx-auto w-full max-w-site px-5 sm:px-8 lg:px-12;
+  }
+  .eyebrow {
+    @apply font-mono text-[11px] uppercase tracking-[0.28em] text-gold;
+  }
+  .h-display {
+    @apply font-display font-extrabold uppercase leading-[0.92] tracking-[-0.01em];
+    font-stretch: 85%;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-3 px-6 py-3.5 font-mono text-[11px] font-medium uppercase tracking-[0.22em] transition-all duration-300;
+  }
+  .btn-gold {
+    @apply btn bg-gold text-ink hover:bg-gold-light;
+  }
+  .btn-ghost {
+    @apply btn border border-mist/25 text-mist hover:border-gold hover:text-gold;
+  }
+  .hairline {
+    @apply border-white/10;
+  }
+  .field {
+    @apply w-full border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-mist placeholder:text-steel-dark transition-colors focus:border-gold focus:outline-none;
+  }
+}
+
+@layer utilities {
+  .bg-blueprint {
+    background-image:
+      linear-gradient(rgba(201, 169, 110, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(201, 169, 110, 0.05) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  }
+  .text-gold-gradient {
+    background: linear-gradient(100deg, #8e7444 0%, #e4d2a6 40%, #c9a96e 60%, #8e7444 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+@keyframes scrollcue {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(200%); }
+}
+@keyframes ripple {
+  0% { transform: scale(0.4); opacity: 0.9; }
+  100% { transform: scale(3); opacity: 0; }
+}
