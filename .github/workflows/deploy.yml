@@ -1,0 +1,67 @@
+name: CI / Deploy
+
+# Every push and pull request: typecheck, unit tests and a production build.
+# A push to main (or "Run workflow" on the Actions tab) also publishes the build to
+# https://siriphonesay.com on the Contabo server. Setup: deploy/README.md, "Automatic deploys".
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# One deploy at a time; a newer push waits instead of cancelling a deploy halfway.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HOST: deploy@13.140.77.148
+      # Public host key of the server (ssh-keyscan -t ed25519 13.140.77.148).
+      HOST_KEY: 13.140.77.148 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEUpz9Pd48fPvAbxKAhaNL99eS3vIFuRl0Q69ZvKTyUJ
+      SITE_URL: https://siriphonesay.com/
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          # Optional. Set them under Settings → Secrets and variables → Actions → Variables.
+          # Left empty, forms fall back to email and the site works without Supabase.
+          VITE_FORM_ENDPOINT: ${{ vars.VITE_FORM_ENDPOINT }}
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Publish to the server
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          [ -n "$SSH_KEY" ] || { echo "::error::Add the DEPLOY_SSH_KEY secret (see deploy/README.md)."; exit 1; }
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$HOST_KEY" > ~/.ssh/known_hosts
+          # The key may only run receive-deploy.sh on the server, which reads the site from stdin.
+          tar -czf - -C dist . | ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$HOST"
+
+      - name: Check the live site
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          want=$(grep -o 'assets/index-[^"]*\.js' dist/index.html | head -1)
+          for i in 1 2 3 4 5 6; do
+            curl -fsS "$SITE_URL" | grep -q "$want" && { echo "Live: $SITE_URL ($want)"; exit 0; }
+            sleep 5
+          done
+          echo "::error::$SITE_URL is not serving the new build ($want)"; exit 1

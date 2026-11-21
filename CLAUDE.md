@@ -9,7 +9,8 @@ npm install
 npm run dev            # http://localhost:5173
 npm run typecheck      # tsc -b
 npm test               # unit tests for the house engine (tests/house.test.ts)
-npm run build          # production build -> dist/   (deploy: Vercel, see vercel.json)
+npm run build          # production build -> dist/
+# deploy: push to main -> GitHub Actions publishes to https://siriphonesay.com (see deploy/README.md)
 npm run build:preview  # single-file preview -> dist-preview/index.html + catalog/*/model.js
 ```
 Environment: copy `.env.example` to `.env`. Every variable is optional. With none set, the site still works with local storage and email fallbacks.
