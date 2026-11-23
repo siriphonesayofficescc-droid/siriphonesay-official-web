@@ -60,6 +60,16 @@ export interface CatalogHouse {
   remote?: boolean
 }
 
+declare const __CATALOG_VERSIONS__: Record<string, string>
+/**
+ * Address of a built-in catalogue file with its content fingerprint (model.glb?v=…), so visitors get a replaced
+ * model or cover image immediately — the server lets browsers keep these files for 30 days.
+ */
+const versioned = (file: string) => {
+  const v = (typeof __CATALOG_VERSIONS__ !== 'undefined' ? __CATALOG_VERSIONS__ : {})[file.replace(/^\//, '')]
+  return v ? `${file}?v=${v}` : file
+}
+
 export const houseCatalog: CatalogHouse[] = [
   {
     id: 'm01',
@@ -94,13 +104,13 @@ export const houseCatalog: CatalogHouse[] = [
       'Site works, fence, gate and driveway ≈ US$9,100',
     ],
     // relative path: works on the live site and in the single-page preview (model published next to index.html)
-    glb: import.meta.env.VITE_PREVIEW_SINGLEFILE === 'true' ? 'catalog/m01/model.js' : 'catalog/m01/model.glb',
+    glb: import.meta.env.VITE_PREVIEW_SINGLEFILE === 'true' ? 'catalog/m01/model.js' : versioned('catalog/m01/model.glb'),
     // model includes the landscape (22 × 25 m plot): keep the house centred, same reference as the house-only model
     origin: [9.83, 0.15, -16.38],
     frame: 26,
     // exterior-only model (the SketchUp file has no interior walls or furniture yet).
     // When an interior is added, set levels: Ground floor y 0.7, Upper floor y 4.2
-    poster: '/catalog/m01/poster.jpg',
+    poster: versioned('/catalog/m01/poster.jpg'),
     published: true,
   },
   {
@@ -134,7 +144,7 @@ export const houseCatalog: CatalogHouse[] = [
       'Timber screen fins and spiral staircase finish ≈ US$3,000',
       'Site works, septic tank, fence, gate and paths ≈ US$7,300',
     ],
-    glb: import.meta.env.VITE_PREVIEW_SINGLEFILE === 'true' ? 'catalog/nasaiy/model.js' : 'catalog/nasaiy/model.glb',
+    glb: import.meta.env.VITE_PREVIEW_SINGLEFILE === 'true' ? 'catalog/nasaiy/model.js' : versioned('catalog/nasaiy/model.glb'),
     levels: [
       { name: 'Ground floor', nameLo: 'ຊັ້ນລຸ່ມ', y: 0.4, start: [-3.4, 1.3, -90] },
       { name: 'Upper floor', nameLo: 'ຊັ້ນເທິງ', y: 3.4 },
@@ -142,7 +152,7 @@ export const houseCatalog: CatalogHouse[] = [
     // model includes the landscape (29 × 54 m plot): keep the house centred, so levels / start above stay valid
     origin: [15.78, 0.35, -12.77],
     frame: 26,
-    poster: '/catalog/nasaiy/poster.jpg',
+    poster: versioned('/catalog/nasaiy/poster.jpg'),
     published: true,
   },
   {
@@ -174,10 +184,10 @@ export const houseCatalog: CatalogHouse[] = [
       'Double carport and porches ≈ US$5,500',
       'Driveway paving, lawn, planting, fence and gate ≈ US$6,500',
     ],
-    glb: import.meta.env.VITE_PREVIEW_SINGLEFILE === 'true' ? 'catalog/scandi01/model.js' : 'catalog/scandi01/model.glb',
+    glb: import.meta.env.VITE_PREVIEW_SINGLEFILE === 'true' ? 'catalog/scandi01/model.js' : versioned('catalog/scandi01/model.glb'),
     levels: [{ name: 'Ground floor', nameLo: 'ຊັ້ນລຸ່ມ', y: 1.7, start: [-12.1, -5.9, 180] }],
     focus: [-12.2, -4.5, 12],
-    poster: '/catalog/scandi01/poster.jpg',
+    poster: versioned('/catalog/scandi01/poster.jpg'),
     published: true,
   },
 ]
