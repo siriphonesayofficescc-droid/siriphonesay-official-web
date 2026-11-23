@@ -42,6 +42,14 @@ export interface CatalogHouse {
     /** where 'Walk inside' starts on this floor: x, z (m, from the model centre) and facing in degrees (0 = towards the back, 90 = left, -90 = right) */
     start?: [number, number, number]
   }[]
+  /**
+   * point of the model (x, y, z in model metres) placed at the centre of the 3D stage: the middle of the house at
+   * ground level. Needed when the model includes a large garden/landscape, so the house — not the whole plot — is
+   * centred and `levels` / `start` stay relative to the house. Leave out to centre the whole model.
+   */
+  origin?: [number, number, number]
+  /** size (m) the opening camera fits in view; default = the whole model. Visitors can still zoom out. */
+  frame?: number
   /** big site models (with street and garden): [x, z, radius] in m from the model centre — the part the camera frames */
   focus?: [number, number, number]
   poster: string
@@ -87,6 +95,9 @@ export const houseCatalog: CatalogHouse[] = [
     ],
     // relative path: works on the live site and in the single-page preview (model published next to index.html)
     glb: import.meta.env.VITE_PREVIEW_SINGLEFILE === 'true' ? 'catalog/m01/model.js' : 'catalog/m01/model.glb',
+    // model includes the landscape (22 × 25 m plot): keep the house centred, same reference as the house-only model
+    origin: [9.83, 0.15, -16.38],
+    frame: 26,
     // exterior-only model (the SketchUp file has no interior walls or furniture yet).
     // When an interior is added, set levels: Ground floor y 0.7, Upper floor y 4.2
     poster: '/catalog/m01/poster.jpg',
@@ -128,6 +139,9 @@ export const houseCatalog: CatalogHouse[] = [
       { name: 'Ground floor', nameLo: 'ຊັ້ນລຸ່ມ', y: 0.4, start: [-3.4, 1.3, -90] },
       { name: 'Upper floor', nameLo: 'ຊັ້ນເທິງ', y: 3.4 },
     ],
+    // model includes the landscape (29 × 54 m plot): keep the house centred, so levels / start above stay valid
+    origin: [15.78, 0.35, -12.77],
+    frame: 26,
     poster: '/catalog/nasaiy/poster.jpg',
     published: true,
   },

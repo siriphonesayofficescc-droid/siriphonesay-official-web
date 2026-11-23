@@ -109,6 +109,8 @@ export default function Experience() {
                   focus={h.focus}
                   walkStart={spot}
                   walkKeys={walkKeys}
+                  origin={h.origin}
+                  frame={h.frame}
                   onPick={(p) => {
                     setSpot({ ...p, n: Date.now() })
                     setMode('walk')

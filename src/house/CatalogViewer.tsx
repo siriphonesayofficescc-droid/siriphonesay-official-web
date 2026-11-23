@@ -113,28 +113,44 @@ function useCatalogScene(url: string) {
   return useGLTF(url, false, false).scene
 }
 
-function Model({ url, onReady, clip }: { url: string; onReady: (obj: THREE.Object3D, b: THREE.Box3) => void; clip: number | null }) {
+function Model({ url, onReady, clip, origin }: { url: string; onReady: (obj: THREE.Object3D, b: THREE.Box3) => void; clip: number | null; origin?: [number, number, number] }) {
   const scene = useCatalogScene(url)
   const obj = useMemo(() => {
     const s = scene.clone(true)
-    // centre on the ground
-    const box = new THREE.Box3().setFromObject(s)
-    const c = box.getCenter(new THREE.Vector3())
-    s.position.set(-c.x, -box.min.y, -c.z)
+    // centre on the ground — on the given house origin when the model includes a large landscape
+    if (origin) s.position.set(-origin[0], -origin[1], -origin[2])
+    else {
+      const box = new THREE.Box3().setFromObject(s)
+      const c = box.getCenter(new THREE.Vector3())
+      s.position.set(-c.x, -box.min.y, -c.z)
+    }
     s.traverse((o) => {
       const m = o as THREE.Mesh
       if (m.isMesh) {
         m.castShadow = true
         m.receiveShadow = true
-        // fast ray tests (not for instanced trees/cars: they keep three's own per-instance test)
+        // fast BVH ray tests for normal meshes; instanced meshes (repeated SketchUp components) keep three.js'
+        // own ray test, which places every copy correctly (three-mesh-bvh ignores instance positions)
         if (!(m as THREE.InstancedMesh).isInstancedMesh) m.raycast = acceleratedRaycast
         // materials are cloned so the cut-away plane never leaks into other houses
         m.material = Array.isArray(m.material) ? m.material.map((x) => x.clone()) : m.material.clone()
+        for (const mat of Array.isArray(m.material) ? m.material : [m.material]) {
+          const sm = mat as THREE.MeshStandardMaterial
+          // sharp textures on floors and walls seen at a grazing angle
+          if (sm.map) sm.map.anisotropy = 8
+          // glass: see what is behind it (no depth write), a little reflection
+          if (sm.transparent && sm.opacity < 0.9) {
+            sm.depthWrite = false
+            sm.envMapIntensity = 1.4
+            m.castShadow = false
+          }
+        }
       }
     })
     s.updateMatrixWorld(true)
     return s
-  }, [scene])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scene, origin?.join()])
   // one shared cutting plane (floor plan mode): everything above it is hidden
   const plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, -1, 0), 0), [])
   useEffect(() => {
@@ -431,30 +447,34 @@ function PlanPicker({ obj, level, onPick }: { obj: THREE.Object3D; level: number
   return null
 }
 
-function Rig({ view, n, box, controls, plan, focus }: { view: CatView; n: number; box: THREE.Box3 | null; controls: React.RefObject<OrbitControlsImpl | null>; plan: number | null; focus?: [number, number, number] }) {
+function Rig({ view, n, box, controls, plan, frame, focus }: { view: CatView; n: number; box: THREE.Box3 | null; controls: React.RefObject<OrbitControlsImpl | null>; plan: number | null; frame?: number; focus?: [number, number, number] }) {
   const { camera } = useThree()
   const goal = useRef<{ pos: THREE.Vector3; target: THREE.Vector3 } | null>(null)
   useEffect(() => {
     if (!box) return
     const size = box.getSize(new THREE.Vector3())
+    const whole = size.clone()
     // big sites (house + garden + street): frame the house and its garden, the rest stays around it
     const off = new THREE.Vector3(focus?.[0] ?? 0, 0, focus?.[1] ?? 0)
     if (focus) size.set(focus[2] * 2, size.y, focus[2] * 2)
     // distance that fits the whole model (incl. carport and site) in the 38° view
-    const R = (Math.max(size.x, size.z, size.y * 1.6) / 2 / Math.tan((19 * Math.PI) / 180)) * 1.05
+    const R = ((frame ?? Math.max(size.x, size.z, size.y * 1.6)) / 2 / Math.tan((19 * Math.PI) / 180)) * 1.05
     const h = size.y
     const t = new THREE.Vector3(0, h * 0.4, 0)
+    // top view always shows the whole plot (garden, carport…), even when the opening view frames the house
+    const Rtop = (Math.max(whole.x, whole.z) / 2 / Math.tan((19 * Math.PI) / 180)) * 1.05
+    const cBox = box.getCenter(new THREE.Vector3())
     const map: Record<CatView, [number, number, number]> = {
       perspective: [R * 0.62, h * 0.8 + R * 0.28, R * 0.72],
       front: [0, h * 0.5 + 1, R],
       back: [0, h * 0.5 + 1, -R],
       right: [R, h * 0.5 + 1, 0],
       left: [-R, h * 0.5 + 1, 0],
-      top: [0.01, R * 1.3, 0.01],
+      top: [cBox.x + 0.01, Math.max(R, Rtop) * 1.3, cBox.z + 0.01],
     }
     if (plan != null) {
       // floor plan: look down on the cut level (slightly tilted, like a dollhouse; straight down for "Top")
-      const Rp = (Math.max(size.x, size.z) / 2 / Math.tan((19 * Math.PI) / 180)) * 1.02
+      const Rp = ((frame ?? Math.max(size.x, size.z)) / 2 / Math.tan((19 * Math.PI) / 180)) * 1.02
       const tp = new THREE.Vector3(0, plan, 0)
       const pm: Record<CatView, [number, number, number]> = {
         perspective: [Rp * 0.35, plan + Rp * 0.85, Rp * 0.55],
@@ -467,9 +487,9 @@ function Rig({ view, n, box, controls, plan, focus }: { view: CatView; n: number
       goal.current = { pos: new THREE.Vector3(...pm[view]).add(off), target: tp.add(off) }
       return
     }
-    goal.current = { pos: new THREE.Vector3(...map[view]).add(off), target: (view === 'top' ? new THREE.Vector3() : t).add(off) }
+    goal.current = { pos: new THREE.Vector3(...map[view]).add(view === 'top' ? new THREE.Vector3() : off), target: view === 'top' ? new THREE.Vector3(cBox.x, 0, cBox.z) : t.add(off) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, n, box, plan, focus?.[0], focus?.[1], focus?.[2]])
+  }, [view, n, box, plan, frame, focus?.[0], focus?.[1], focus?.[2]])
   useEffect(() => {
     const c = controls.current
     if (!c) return
@@ -521,8 +541,12 @@ const CatalogViewer = forwardRef<
     focus?: [number, number, number]
     /** floor plan: the visitor tapped a room */
     onPick?: (p: { x: number; y: number; z: number }) => void
+    /** model point placed at the stage centre (house centre at ground level) */
+    origin?: [number, number, number]
+    /** size (m) the camera frames; default = whole model */
+    frame?: number
   }
->(function CatalogViewer({ url, view, n, night, autoRotate, className, lowPower, mode = 'outside', level = 0, levelStart, walkStart, walkKeys, onPick, focus }, ref) {
+>(function CatalogViewer({ url, view, n, night, autoRotate, className, lowPower, mode = 'outside', level = 0, levelStart, walkStart, walkKeys, onPick, origin, frame, focus }, ref) {
   const controls = useRef<OrbitControlsImpl | null>(null)
   const [box, setBox] = useState<THREE.Box3 | null>(null)
   const [obj, setObj] = useState<THREE.Object3D | null>(null)
@@ -570,6 +594,7 @@ const CatalogViewer = forwardRef<
           <Model
             url={url}
             clip={clip}
+            origin={origin}
             onReady={(o, b) => {
               setObj(o)
               setBox(b)
@@ -584,7 +609,7 @@ const CatalogViewer = forwardRef<
         {mode !== 'walk' && (
           <OrbitControls ref={controls} makeDefault enableDamping dampingFactor={0.08} minDistance={0.8} maxDistance={ext * 4} maxPolarAngle={mode === 'plan' ? Math.PI / 2.4 : Math.PI / 2.02} autoRotate={autoRotate && mode === 'outside'} autoRotateSpeed={0.5} target={[0, 3, 0]} />
         )}
-        {mode !== 'walk' && <Rig key={mode} view={view} n={n} box={box} controls={controls} plan={mode === 'plan' ? level : null} focus={focus} />}
+        {mode !== 'walk' && <Rig key={mode} view={view} n={n} box={box} controls={controls} plan={mode === 'plan' ? level : null} frame={frame} focus={focus} />}
         {mode === 'plan' && obj && <PlanPicker obj={obj} level={level} onPick={pick} />}
         {mode === 'walk' && obj && start && <Walker obj={obj} start={start} keysRef={walkKeys ?? noKeys} />}
         <Capture fn={cap} />

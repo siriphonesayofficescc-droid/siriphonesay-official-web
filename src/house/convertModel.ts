@@ -10,7 +10,7 @@ import * as THREE from 'three'
 import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js'
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
 import { unzipSync } from 'three/examples/jsm/libs/fflate.module.js'
-import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { refineMesh } from './refineMesh'
 type Simplifier = typeof import('meshoptimizer').MeshoptSimplifier
 let MeshoptSimplifier: Simplifier | null = null
 
@@ -33,36 +33,6 @@ function guessColour(file: string): string | null {
     [/fabric|carpet|rug|leather|sofa/, '#B9AE9C'],
   ]
   return rules.find(([re]) => re.test(f))?.[1] ?? null
-}
-
-/** sloppy simplification of dense, untextured meshes (lamps, handles, plants…); returns new triangle count */
-function slim(g: THREE.BufferGeometry, uses: number): THREE.BufferGeometry {
-  const pos = g.getAttribute('position') as THREE.BufferAttribute
-  if (!pos) return g
-  const tris = (g.index ? g.index.count : pos.count) / 3
-  g.computeBoundingBox()
-  const s = g.boundingBox!.getSize(new THREE.Vector3())
-  const size = Math.max(s.x, s.y, s.z)
-  const small = size < 0.5 && tris > 300
-  if (!(small || tris > 15000 || (tris > 800 && tris * uses > 12000))) return g
-  // keep texture coordinates, so textured objects (roof tiles, fabrics, cars) still show their texture after simplifying
-  const p = new THREE.BufferGeometry()
-  p.setAttribute('position', pos.clone())
-  const uv = g.getAttribute('uv') as THREE.BufferAttribute | undefined
-  if (uv) p.setAttribute('uv', uv.clone())
-  if (g.index) p.setIndex(g.index.clone())
-  const merged = mergeVertices(p, 1e-5)
-  const idx = merged.index ? Uint32Array.from(merged.index.array as ArrayLike<number>) : Uint32Array.from({ length: merged.getAttribute('position').count }, (_, i) => i)
-  const ratio = Math.max(Math.min(1, (small ? 120 : tris > 15000 ? 1500 : 800) / tris), 0.03)
-  const target = Math.max(3, Math.floor((idx.length * ratio) / 3) * 3)
-  if (!MeshoptSimplifier) return g
-  // error is relative to the object's size: keep big objects (roofs, curtains) within ~4 cm so their shape survives
-  const res = MeshoptSimplifier.simplifySloppy(idx, merged.getAttribute('position').array as Float32Array, 3, null, target, small ? 1 : Math.min(0.08, 0.04 / Math.max(size, 0.01)))
-  const out = (Array.isArray(res) ? res[0] : res) as Uint32Array
-  merged.setIndex(new THREE.BufferAttribute(out, 1))
-  merged.computeVertexNormals()
-  merged.groups = []
-  return merged
 }
 
 export interface ConvertResult {
@@ -143,17 +113,13 @@ export async function convertToGlb(
 
   // drop SketchUp edges, guides and axes (lines/points) — only surfaces are shown
   const drop: THREE.Object3D[] = []
+  // helper objects of render plug-ins (D5 / Enscape / V-Ray light emitters) are not part of the house
+  const helper = /^(D5RenderLight|D5_?Light|Enscape|VRay(Light|Sun|Plane|Sphere|Mesh)?Light|V-?Ray\s*Light|LightProxy|Section\s*Plane)/i
   scene.traverse((o) => {
-    if ((o as THREE.Line).isLine || (o as THREE.Points).isPoints) drop.push(o)
+    if ((o as THREE.Line).isLine || (o as THREE.Points).isPoints || helper.test(o.name)) drop.push(o)
   })
   drop.forEach((o) => o.parent?.remove(o))
 
-  // geometry shared by repeated components (doors, lamps…) counts once per use
-  const uses = new Map<string, number>()
-  scene.traverse((o) => {
-    const m = o as THREE.Mesh
-    if (m.isMesh) uses.set(m.geometry.uuid, (uses.get(m.geometry.uuid) ?? 0) + 1)
-  })
   try {
     const mo = await import('meshoptimizer')
     await mo.MeshoptSimplifier.ready
@@ -161,50 +127,98 @@ export async function convertToGlb(
   } catch {
     MeshoptSimplifier = null // WebAssembly blocked: keep full detail
   }
-  const slimmed = new Map<string, THREE.BufferGeometry>()
 
-  // materials without a real texture: drop the placeholder map so the colour shows
+  // SketchUp/Collada gives Phong/Lambert materials; the web viewer uses physically based (standard) materials.
+  // Identical-looking materials are shared so the house draws in as few batches as possible.
+  const matCache = new Map<THREE.Material, THREE.MeshStandardMaterial>()
+  const lookCache = new Map<string, THREE.MeshStandardMaterial>()
+  const toStandard = (mat: THREE.Material) => {
+    const hit = matCache.get(mat)
+    if (hit) return hit
+    const mm = mat as THREE.MeshPhongMaterial
+    const hasTex = !!(mm.map && mm.map.image && (mm.map.image as HTMLImageElement).width > 1)
+    const glassy = mm.transparent && mm.opacity < 0.9
+    const guess = !hasTex ? guessColour(`${mm.name} ${texMap.get(mm.name) ?? ''}`) : null
+    const color = guess && (!mm.color || mm.color.getHexString() === 'ffffff') ? new THREE.Color(guess) : (mm.color ?? new THREE.Color('#cccccc'))
+    const n = mm.name.toLowerCase()
+    const shiny = /marble|granite|polish|ceramic|porcelain|tile|gloss|lacquer/.test(n)
+    const metal = /chrome|steel|stainless|metal|alum|brass|gold|silver/.test(n)
+    const soft = /fabric|carpet|rug|cloth|leather|velvet|cushion|sofa|grass/.test(n)
+    const look = [hasTex ? mm.map!.uuid : '-', color.getHexString(), mm.transparent ? mm.opacity.toFixed(2) : '1', shiny, metal, soft].join('|')
+    let out = lookCache.get(look)
+    if (!out) {
+      out = new THREE.MeshStandardMaterial({
+        name: mm.name,
+        color: hasTex ? new THREE.Color('#ffffff').multiply(color.getHexString() === '000000' ? new THREE.Color('#ffffff') : color) : color,
+        map: hasTex ? mm.map : null,
+        transparent: mm.transparent,
+        opacity: mm.opacity,
+        depthWrite: !glassy,
+        roughness: glassy ? 0.05 : shiny ? 0.25 : metal ? 0.35 : soft ? 0.95 : 0.8,
+        metalness: metal && !glassy ? 0.6 : glassy ? 0.1 : 0,
+        side: THREE.DoubleSide, // SketchUp faces are often one-sided
+      })
+      lookCache.set(look, out)
+    }
+    matCache.set(mat, out)
+    return out
+  }
+
+  // Bake the whole model into one mesh per material (world positions, metres), then reduce each faithfully.
+  scene.updateMatrixWorld(true)
+  const buckets = new Map<THREE.MeshStandardMaterial, { P: number[]; T: number[] | null; idx: number[] }>()
+  const v = new THREE.Vector3()
   let meshes = 0
   let triangles = 0
-  let trianglesOut = 0
   scene.traverse((o) => {
     const m = o as THREE.Mesh
     if (!m.isMesh) return
     meshes++
     const g = m.geometry as THREE.BufferGeometry
-    triangles += (g.index ? g.index.count : g.attributes.position.count) / 3
+    const pos = g.attributes.position as THREE.BufferAttribute | undefined
+    if (!pos) return
+    const uv = g.attributes.uv as THREE.BufferAttribute | undefined
+    const index = g.index
+    const count = index ? index.count : pos.count
     const mats = Array.isArray(m.material) ? m.material : [m.material]
-    // SketchUp/Collada gives Phong/Lambert materials; the web viewer uses physically based (standard) materials
-    const conv = mats.map((mat) => {
-      const mm = mat as THREE.MeshPhongMaterial
-      const hasTex = !!(mm.map && mm.map.image && (mm.map.image as HTMLImageElement).width > 1)
-      const glassy = mm.transparent && mm.opacity < 0.9
-      const guess = !hasTex ? guessColour(`${mm.name} ${texMap.get(mm.name) ?? ''}`) : null
-      return new THREE.MeshStandardMaterial({
-        name: mm.name,
-        color: guess && (!mm.color || mm.color.getHexString() === 'ffffff') ? new THREE.Color(guess) : (mm.color ?? new THREE.Color('#cccccc')),
-        map: hasTex ? mm.map : null,
-        transparent: mm.transparent,
-        opacity: mm.opacity,
-        roughness: glassy ? 0.05 : 0.8,
-        metalness: glassy ? 0.1 : 0,
-        side: THREE.DoubleSide, // SketchUp faces are often one-sided
-      })
-    })
-    m.material = Array.isArray(m.material) ? conv : conv[0]
-    // simplify dense untextured geometry (keeps textured surfaces exact)
-    if (!conv.some((c) => c.map)) {
-      const key = m.geometry.uuid
-      if (!slimmed.has(key)) slimmed.set(key, slim(m.geometry, uses.get(key) ?? 1))
-      const ng = slimmed.get(key)!
-      if (ng !== m.geometry) {
-        m.geometry = ng
-        if (Array.isArray(m.material)) m.material = m.material[0]
+    const groups = g.groups.length ? g.groups : [{ start: 0, count, materialIndex: 0 }]
+    for (const gr of groups) {
+      const mat = toStandard(mats[gr.materialIndex ?? 0] ?? mats[0])
+      let b = buckets.get(mat)
+      if (!b) buckets.set(mat, (b = { P: [], T: mat.map ? [] : null, idx: [] }))
+      const end = Math.min(gr.start + gr.count, count)
+      for (let c = gr.start; c < end; c++) {
+        const i = index ? index.getX(c) : c
+        v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld)
+        b.idx.push(b.P.length / 3)
+        b.P.push(v.x, v.y, v.z)
+        if (b.T) b.T.push(uv ? uv.getX(i) : 0, uv ? uv.getY(i) : 0)
       }
+      triangles += (end - gr.start) / 3
     }
-    const g2 = m.geometry as THREE.BufferGeometry
-    trianglesOut += (g2.index ? g2.index.count : g2.attributes.position.count) / 3
   })
+  onProgress?.('Optimising geometry (keeps shapes within 1 cm)…')
+  const baked = new THREE.Group()
+  let trianglesOut = 0
+  for (const [mat, b] of buckets) {
+    if (!b.idx.length) continue
+    const r = refineMesh({ P: new Float32Array(b.P), T: b.T ? new Float32Array(b.T) : null, idx: Uint32Array.from(b.idx) }, MeshoptSimplifier)
+    if (!r.idx.length) continue
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.BufferAttribute(r.P, 3))
+    geo.setAttribute('normal', new THREE.BufferAttribute(r.N, 3))
+    if (r.T) geo.setAttribute('uv', new THREE.BufferAttribute(r.T, 2))
+    geo.setIndex(new THREE.BufferAttribute(r.idx, 1))
+    trianglesOut += r.idx.length / 3
+    const mesh = new THREE.Mesh(geo, mat)
+    mesh.name = mat.name
+    baked.add(mesh)
+  }
+  scene.clear()
+  scene.position.set(0, 0, 0)
+  scene.rotation.set(0, 0, 0)
+  scene.scale.set(1, 1, 1)
+  scene.add(baked)
   scene.updateMatrixWorld(true)
   const box = new THREE.Box3().setFromObject(scene)
   const size = box.getSize(new THREE.Vector3())
@@ -219,7 +233,7 @@ export async function convertToGlb(
   onProgress?.('Writing the web 3D file…')
   const exportGlb = (obj: THREE.Object3D) =>
     new Promise<ArrayBuffer | null>((resolve) =>
-      new GLTFExporter().parse(obj, (r) => resolve((r as ArrayBuffer) ?? null), () => resolve(null), { binary: true, onlyVisible: true, maxTextureSize: 2048 }),
+      new GLTFExporter().parse(obj, (r) => resolve((r as ArrayBuffer) ?? null), () => resolve(null), { binary: true, onlyVisible: true, maxTextureSize: 1024 }),
     )
   let glb = opts?.forceParts ? null : await exportGlb(root)
   if (!glb || glb.byteLength < 100) {

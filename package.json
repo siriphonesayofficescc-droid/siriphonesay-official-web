@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "build:preview": "tsc -b && vite build -c vite.preview.config.ts && python3 scripts/inline-images.py && python3 scripts/pack-models.py",
     "typecheck": "tsc -b",
-    "test": "esbuild tests/house.test.ts --bundle --platform=node --outfile=node_modules/.cache/house-test.cjs --log-level=error --define:import.meta.env={} && node node_modules/.cache/house-test.cjs"
+    "test": "esbuild tests/house.test.ts --bundle --platform=node --outfile=node_modules/.cache/house-test.cjs --log-level=error --define:import.meta.env={} && node node_modules/.cache/house-test.cjs",
+    "convert-model": "node --max-old-space-size=7000 scripts/dae-to-glb.mjs"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
@@ -45,6 +46,7 @@
     "tailwindcss": "^3.4.19",
     "typescript": "~7.0.2",
     "vite": "^8.3.6",
-    "vite-plugin-singlefile": "^2.3.4"
+    "vite-plugin-singlefile": "^2.3.4",
+    "saxes": "^6.0.0"
   }
 }
