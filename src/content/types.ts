@@ -50,6 +50,18 @@ export interface Service {
   relatedCategories: ProjectCategory[]
   image?: string
   imageIsPlaceholder?: boolean
+  /** small note shown on the main image (e.g. "Illustrative photo") */
+  imageNote?: string
+  /** a short field story or case study shown under the overview */
+  story?: { eyebrow: string; title: string; paragraphs: string[]; facts?: { label: string; value: string }[] }
+  /** how the work is carried out, step by step */
+  approach?: { title: string; text: string }[]
+  /** photos with captions */
+  gallery?: { src: string; caption: string }[]
+  /** heading above the photos (default: In the field) */
+  galleryTitle?: string
+  /** note shown under the gallery (e.g. where the photos come from) */
+  galleryNote?: string
 }
 
 export interface Capability {

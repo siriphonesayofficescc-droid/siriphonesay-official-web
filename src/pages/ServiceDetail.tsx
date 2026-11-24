@@ -41,6 +41,9 @@ export default function ServiceDetail() {
               <>
                 <img src={s.image} alt="" className="h-full w-full object-cover" />
                 <PlaceholderTag show={!!s.imageIsPlaceholder} />
+                {s.imageNote && (
+                  <span className="absolute bottom-3 left-3 border border-white/15 bg-ink/80 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.16em] text-steel-light backdrop-blur">{s.imageNote}</span>
+                )}
               </>
             ) : (
               <BlueprintPlaceholder label={s.title} />
@@ -73,6 +76,66 @@ export default function ServiceDetail() {
             </Reveal>
           )}
         </div>
+
+        {s.story && (
+          <section className="mt-20 grid gap-10 border-t border-white/[0.08] pt-12 lg:grid-cols-12">
+            <Reveal className="lg:col-span-7">
+              <span className="eyebrow">{s.story.eyebrow}</span>
+              <h2 className="h-display mt-4 text-[clamp(1.8rem,3.6vw,3rem)] text-mist">{s.story.title}</h2>
+              <div className="mt-6 space-y-4 text-[15px] leading-relaxed text-steel-light">
+                {s.story.paragraphs.map((p) => (
+                  <p key={p}>{p}</p>
+                ))}
+              </div>
+            </Reveal>
+            {s.story.facts && (
+              <Reveal delay={0.1} className="lg:col-span-5">
+                <dl className="grid gap-px bg-white/[0.07]">
+                  {s.story.facts.map((f) => (
+                    <div key={f.label} className="bg-ink p-4">
+                      <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">{f.label}</dt>
+                      <dd className="mt-1 text-[15px] text-mist">{f.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </Reveal>
+            )}
+          </section>
+        )}
+
+        {s.approach && (
+          <section className="mt-20">
+            <h2 className="eyebrow">How we work</h2>
+            <ol className="mt-8 grid gap-px bg-white/[0.07] md:grid-cols-2 lg:grid-cols-3">
+              {s.approach.map((a, i) => (
+                <Reveal key={a.title} delay={0.04 * i}>
+                  <li className="h-full bg-ink p-6">
+                    <span className="font-mono text-[11px] text-gold">{String(i + 1).padStart(2, '0')}</span>
+                    <h3 className="mt-2 font-display text-lg font-semibold text-mist">{a.title}</h3>
+                    <p className="mt-2 text-[14px] leading-relaxed text-steel-light">{a.text}</p>
+                  </li>
+                </Reveal>
+              ))}
+            </ol>
+          </section>
+        )}
+
+        {s.gallery && s.gallery.length > 0 && (
+          <section className="mt-20">
+            <h2 className="eyebrow">{s.galleryTitle ?? 'In the field'}</h2>
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {s.gallery.map((g) => (
+                <Reveal key={g.src}>
+                  <figure className="overflow-hidden border border-white/[0.08] bg-coal">
+                    <img src={g.src} alt={g.caption} loading="lazy" className="aspect-[4/3] w-full object-cover" />
+                    <figcaption className="p-3 text-[13px] leading-snug text-steel-light">{g.caption}</figcaption>
+                  </figure>
+                </Reveal>
+              ))}
+            </div>
+            {s.galleryNote && <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-steel">{s.galleryNote}</p>}
+          </section>
+        )}
 
         <section className="mt-20">
           <h2 className="eyebrow">Related projects</h2>

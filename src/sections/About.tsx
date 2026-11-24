@@ -1,9 +1,25 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useReducedMotion } from 'framer-motion'
 import { company } from '../content/company'
-import { PlaceholderTag, Reveal, SectionHeading } from '../components/ui'
+import { Reveal, SectionHeading } from '../components/ui'
+
+/** About image: a slow crossfade through house design images (exterior first) */
+const ABOUT_IMAGES = [
+  { src: '/images/home/house-exterior.webp', alt: 'Modern two-storey house with timber soffits, stone cladding and a double carport' },
+  { src: '/images/home/bedroom.webp', alt: 'Bedroom with timber feature wall, upholstered bed and warm indirect lighting' },
+  { src: '/images/home/bathroom.webp', alt: 'Bathroom with grey stone-look tiles, timber vanity and glass shower' },
+  { src: '/images/home/walk-in-closet.webp', alt: 'Walk-in closet with glass-front wardrobes, dressing table and herringbone floor' },
+]
 
 export default function About() {
   const [tab, setTab] = useState<'vision' | 'mission'>('vision')
+  const reduce = useReducedMotion()
+  const [slide, setSlide] = useState(0)
+  useEffect(() => {
+    if (reduce) return
+    const id = setInterval(() => setSlide((i) => (i + 1) % ABOUT_IMAGES.length), 5500)
+    return () => clearInterval(id)
+  }, [reduce])
   const r = company.registration
   return (
     <section id="about" className="relative bg-ink py-28 md:py-36">
@@ -11,9 +27,22 @@ export default function About() {
         {/* image side */}
         <Reveal className="relative lg:sticky lg:top-28">
           <div className="relative aspect-[4/5] overflow-hidden">
-            <img src="/images/site/structure-frame.webp" alt="Reinforced concrete building frame under construction" loading="lazy" className="h-full w-full object-cover grayscale-[35%]" />
+            {ABOUT_IMAGES.map((im, i) => (
+              <img
+                key={im.src}
+                src={im.src}
+                alt={i === slide ? im.alt : ''}
+                aria-hidden={i !== slide}
+                loading={i === 0 ? 'eager' : 'lazy'}
+                className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1600ms] ease-in-out ${i === slide ? 'opacity-100' : 'opacity-0'}`}
+              />
+            ))}
             <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent to-transparent" />
-            <PlaceholderTag />
+            <div className="absolute right-4 top-4 flex gap-1.5" aria-hidden>
+              {ABOUT_IMAGES.map((im, i) => (
+                <span key={im.src} className={`h-1 w-5 transition-colors duration-500 ${i === slide ? 'bg-gold' : 'bg-white/30'}`} />
+              ))}
+            </div>
             <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between">
               <div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-gold">Established</div>

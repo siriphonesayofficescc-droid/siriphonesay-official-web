@@ -86,16 +86,47 @@ export const services: Service[] = [
     title: 'Riverbank & Flood Protection',
     short: 'Slope protection, flood-control and riverbank stabilisation works.',
     description:
-      'Riverbank stabilisation, slope protection and flood-control structures that protect land, roads and communities along rivers and low-lying areas.',
+      'Riverbank stabilisation, slope protection and flood-control structures that protect land, roads and communities along rivers and low-lying areas — designed for the rise and fall of the Mekong and its tributaries.',
     includes: [
       'Riverbank protection and stabilisation',
-      'Gabion, revetment and slope protection works',
-      'Flood-control embankments and drainage',
-      'Erosion-control measures',
+      'Rock revetments, gabions and slope protection works',
+      'Toe protection and scour control below low water',
+      'Geotextile filters and slope drainage',
+      'Flood-control embankments, levees and drainage outlets',
+      'Bank re-grading, re-vegetation and erosion control',
     ],
-    equipment: ['Excavators', 'Dump trucks', 'Portable water pumps'],
+    equipment: ['Excavators', 'Dump trucks', 'Vibratory rollers', 'Portable water pumps', 'RTK GNSS survey equipment'],
     relatedCategories: ['flood-protection', 'riverbank'],
-    // PLACEHOLDER — add a photo of a riverbank / flood protection project
+    image: '/images/services/riverbank-revetment.webp',
+    imageNote: 'Illustrative photo — typical riverbank works in Laos',
+    story: {
+      eyebrow: 'Why it matters in Laos',
+      title: 'Every rainy season, rivers take land.',
+      paragraphs: [
+        'From May to October the Mekong and rivers such as the Nam Khan, Nam Ngum and Xe Bang Fai rise by several metres. Fast water undercuts the toe of the bank, the slope above slides in, and riverside roads, houses, temples and farmland are lost — often a little more each year.',
+        'Lasting protection starts below the waterline. A heavy rock or gabion toe stops scour, a geotextile filter keeps the soil from washing out through the stones, and a correctly graded revetment and drainage carry water away without destabilising the slope. Above the flood line, planting and a protected crest finish the job.',
+        'Siriphonesay Construction combines its RTK and drone surveying with civil works capacity to deliver this end to end: survey and design, construction during the dry-season window, and monitoring after the first high-water season.',
+      ],
+      facts: [
+        { label: 'Construction window', value: 'Dry season, about November – April (low water)' },
+        { label: 'Typical solutions', value: 'Rock revetment · gabions · toe protection · geotextile · drainage · planting' },
+        { label: 'Survey', value: 'RTK GNSS cross-sections and drone mapping of the bank' },
+      ],
+    },
+    approach: [
+      { title: 'Site & river survey', text: 'RTK GNSS cross-sections, drone orthophoto of the bank, high-water marks and interviews with residents about past floods.' },
+      { title: 'Design', text: 'Bank slope and revetment design for the design flood level and flow, toe depth below expected scour, filter and drainage details, quantities and BOQ.' },
+      { title: 'Permits & coordination', text: 'Coordination with the district and provincial Public Works and Transport offices and the community before work starts.' },
+      { title: 'Dry-season construction', text: 'Excavation and re-grading, geotextile, toe rock or gabions placed first, then the revetment up to the crest, drainage outlets and crest protection.' },
+      { title: 'Quality control', text: 'Rock size and gradation checks, gabion and geotextile inspections, survey of finished levels and as-built drawings.' },
+      { title: 'Monitoring', text: 'Inspection after the first rainy season and repair recommendations, so the protection keeps working year after year.' },
+    ],
+    gallery: [
+      { src: '/images/services/riverbank-revetment.webp', caption: 'Rock revetment with toe protection along a river in Laos — the type of works we design and build.' },
+      { src: '/images/services/riverbank-erosion.webp', caption: 'What happens without protection: bank erosion undermining a riverside road during high water.' },
+    ],
+    galleryTitle: 'Typical conditions and works',
+    galleryNote: 'Illustrative photos of riverbank conditions and works in Laos — not Siriphonesay Construction projects.',
   },
   {
     slug: 'environmental-wetland-infrastructure',
@@ -119,10 +150,12 @@ export const services: Service[] = [
     slug: 'engineering-consultancy',
     index: '07',
     title: 'Engineering Consultancy',
-    short: 'Design, BOQ, cost estimation, tender documents and supervision.',
+    short: 'Condition surveys, design, BOQ, cost estimation, tender documents and supervision.',
     description:
-      'Engineering design, quantity take-off and BOQ preparation, cost estimation, tender documentation, method statements and construction supervision for owners and partners.',
+      'Building condition surveys, renovation assessments, engineering design, quantity take-off and BOQ preparation, cost estimation, tender documentation, method statements and construction supervision for owners and partners.',
     includes: [
+      'Building condition surveys and renovation assessments',
+      'Client requirement workshops and option studies',
       'Architectural and structural design',
       'BOQ, quantity take-off and cost estimation',
       'Tender documentation and method statements',
@@ -130,7 +163,30 @@ export const services: Service[] = [
       'Joint-venture project preparation',
     ],
     relatedCategories: ['building', 'infrastructure', 'water-supply', 'environmental'],
-    // PLACEHOLDER — add a photo of design / office work
+    image: '/images/services/consultancy-site-survey.webp',
+    story: {
+      eyebrow: 'Case study · 2024',
+      title: 'CIAT–NAFRI laboratory renovation, Dongdok',
+      paragraphs: [
+        'In November 2024 our engineers carried out a pre-renovation consultancy for the CIAT–NAFRI Molecular Pathology Laboratory in Dongdok Village, Xaythany District — a research campus of single-storey buildings linked by covered walkways.',
+        "The team surveyed the condition of the buildings, roofs and walkways, inspected the offices and meeting rooms room by room, and held working sessions with the client's staff, comparing archive photographs of the original buildings with what the laboratory needs today.",
+        'From the survey we prepared the renovation scope, design input and a full bill of quantities and cost estimate covering structural, architectural, electrical and sanitary works, with a 7-month construction programme, phased payments and a one-year warranty.',
+      ],
+      facts: [
+        { label: 'Client', value: 'CIAT–NAFRI Molecular Pathology Laboratory' },
+        { label: 'Location', value: 'Dongdok Village, Xaythany District, Vientiane Capital' },
+        { label: 'Our role', value: 'Condition survey · requirements · design input · BOQ & cost estimate' },
+        { label: 'Scope estimated', value: 'Structure · architecture · electrical · sanitary' },
+        { label: 'Programme', value: '7 months, 1-year warranty' },
+      ],
+    },
+    gallery: [
+      { src: '/images/services/consultancy-site-survey.webp', caption: 'Site survey: our engineers check the drawings against the existing building and covered walkway.' },
+      { src: '/images/services/consultancy-walkway-survey.webp', caption: 'Condition survey of the covered walkways, roofs and building facades.' },
+      { src: '/images/services/consultancy-office-assessment.webp', caption: "Room-by-room assessment of the laboratory offices with the client's team." },
+      { src: '/images/services/consultancy-client-review.webp', caption: 'Working session: comparing archive photographs of the original buildings with the renovation goals.' },
+      { src: '/images/services/consultancy-meeting-room.webp', caption: 'Meeting room recorded for the renovation scope — ceiling, floor and finishes.' },
+    ],
   },
   {
     slug: 'drone-surveying-rtk',
